@@ -1,0 +1,59 @@
+# Swagger Configuration Template.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation sample template that contains a Swagger configuration.
+
+Parameters:
+   RestApiName:
+    Type: String
+    Default: TEST-RestApi
+    Description: Please enter the RestApiName to configure swagger. 
+    
+Resources:
+  APIName:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Ref RestApiName
+      Description: A demo API for Input RestApi swagger configuration.
+      Body:
+        swagger: '2.0'
+        info:
+          title: !Ref RestApiName
+          description: A simple input API resources.
+          version: 1.0.1
+          contact:
+            name: Naresh Dasari
+            url: https://www.google.com
+            email: naresh.dasari@peopletechgroup.com
+          license:
+            name: Apache 2.0
+            url: http://www.apache.org/licenses/LICENSE-2.0.html
+          termsOfService: http://www.google.com/
+        paths:
+          "/getMessage/":
+            get:
+              description: Returns a getMessage resource
+              produces:
+              - application/json
+              responses:
+                '200':
+                  description: A message resource.
+              x-amazon-apigateway-integration:
+                type: http
+                responses:
+                  default:
+                    statusCode: '200'
+                httpMethod: GET
+                uri: http://api.example.com
+
+Outputs:
+  APINameOut:
+    Description: Root API gateway
+    Value: !Ref APIName
+      # Fn::Join:
+      # - ''
+      # - - https://
+        # - Ref: APIName
+        # - ".execute-api."
+        # - Ref: AWS::Region
+        # - ".amazonaws.com"   
+
