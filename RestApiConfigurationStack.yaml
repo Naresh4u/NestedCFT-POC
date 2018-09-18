@@ -158,10 +158,10 @@ Resources:
     Properties:
       RestApiId:
         Ref: APINameOut
-      ParentId:
-        Fn::GetAtt:
-        - APINameOut
-        - RootResourceId
+      ParentId:Fn::GetAtt: [GreetingApi, Outputs.APINameOut]
+        # Fn::GetAtt:
+        # - APINameOut
+        # - RootResourceId
       PathPart: greeting
       
   GreetingRequest:
