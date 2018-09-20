@@ -1,0 +1,150 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation sample template that contains a single Lambda function
+  behind an API Gateway based on Swagger
+  
+
+#Input parameters.
+Parameters:
+   RestApiName:
+    Type: String
+    Default: TEST-RestApi
+    Description: Please enter the RestApiName to configure swagger.
+    
+Resources:
+  GreetingLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile:
+          Fn::Join:
+          - "\n"
+          - - "'use strict';"
+            - ''
+            - "// Greeter Lambda"
+            - exports.handler = (event, context, callback) => {
+            - "  console.log('Event:', JSON.stringify(event));"
+            - "  const name = event.name || 'World';"
+            - "  const response = {greeting: `Hello, ${name}!`};"
+            - "  callback(null, response);"
+            - "};"
+      Description: A greeting function
+      FunctionName: GreetingLambda
+      Handler: index.handler
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
+      Runtime: nodejs4.3
+      
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      
+  GreetingApiStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: https://s3.amazonaws.com/cf-templates-1jkvv6ds43ed4-us-east-1/Swagger/SwaagerConfigurationStack.yaml
+               
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:invokeFunction
+      FunctionName:
+        Fn::GetAtt:
+        - GreetingLambda
+        - Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:execute-api:'
+          - Ref: AWS::Region
+          - ":"
+          - Ref: AWS::AccountId
+          - ":"
+          - Fn::GetAtt: [ GreetingApiStack, Outputs.APINameOut ]
+          - "/*"
+          
+  ApiGatewayCloudWatchLogsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - apigateway.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+      - PolicyName: ApiGatewayLogsPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:DescribeLogGroups
+            - logs:DescribeLogStreams
+            - logs:PutLogEvents
+            - logs:GetLogEvents
+            - logs:FilterLogEvents
+            Resource: "*"
+            
+  ApiGatewayAccount:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn:
+        Fn::GetAtt:
+        - ApiGatewayCloudWatchLogsRole
+        - Arn
+        
+  GreetingApiStage:
+    DependsOn:
+    - ApiGatewayAccount
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId:
+        Ref: ApiDeployment
+      MethodSettings:
+      - DataTraceEnabled: true
+        HttpMethod: "*"
+        LoggingLevel: INFO
+        ResourcePath: "/*"
+      RestApiId:
+        Fn::GetAtt: [ GreetingApiStack, Outputs.APINameOut ]
+      StageName: LATEST
+      
+  ApiDeployment:
+    DependsOn: GreetingApiStack
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId:
+        Fn::GetAtt: [ GreetingApiStack, Outputs.APINameOut ]
+      StageName: DummyStage
+      
+Outputs:
+  RootUrl:
+    Description: Root URL of the API gateway
+    Value:
+      Fn::Join:
+      - ''
+      - - https://
+        - Fn::GetAtt: [ GreetingApiStack, Outputs.APINameOut ]
+        - ".execute-api."
+        - Ref: AWS::Region
+        - ".amazonaws.com"
