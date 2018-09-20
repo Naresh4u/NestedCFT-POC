@@ -52,7 +52,7 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       
-  GreetingApi:
+  GreetingApiStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: https://s3.amazonaws.com/cf-templates-1jkvv6ds43ed4-us-east-1/Swagger/SwaagerConfigurationStack.yaml
@@ -74,9 +74,9 @@ Resources:
           - ":"
           - Ref: AWS::AccountId
           - ":"
-          #- Fn::GetAtt:GreetingApi.Outputs.APINameOut
-          - Ref: GreetingApi
+          - Fn::GetAtt: [ GreetingApiStack, Outputs.APINameOut ]
           - "/*"
+          
   ApiGatewayCloudWatchLogsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -104,6 +104,7 @@ Resources:
             - logs:GetLogEvents
             - logs:FilterLogEvents
             Resource: "*"
+            
   ApiGatewayAccount:
     Type: AWS::ApiGateway::Account
     Properties:
@@ -111,6 +112,7 @@ Resources:
         Fn::GetAtt:
         - ApiGatewayCloudWatchLogsRole
         - Arn
+        
   GreetingApiStage:
     DependsOn:
     - ApiGatewayAccount
@@ -124,15 +126,15 @@ Resources:
         LoggingLevel: INFO
         ResourcePath: "/*"
       RestApiId:
-        Fn::GetAtt: [ GreetingApi, Outputs.APINameOut ]
+        Fn::GetAtt: [ GreetingApiStack, Outputs.APINameOut ]
       StageName: LATEST
       
   ApiDeployment:
-    DependsOn: GreetingApi
+    DependsOn: GreetingApiStack
     Type: AWS::ApiGateway::Deployment
     Properties:
       RestApiId:
-        Fn::GetAtt: [ GreetingApi, Outputs.APINameOut ]
+        Fn::GetAtt: [ GreetingApiStack, Outputs.APINameOut ]
       StageName: DummyStage
       
 Outputs:
@@ -142,7 +144,7 @@ Outputs:
       Fn::Join:
       - ''
       - - https://
-        - Ref: GreetingApi
+        - Fn::GetAtt: [ GreetingApiStack, Outputs.APINameOut ]
         - ".execute-api."
         - Ref: AWS::Region
         - ".amazonaws.com"
